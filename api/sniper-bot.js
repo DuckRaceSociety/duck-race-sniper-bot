@@ -1,4 +1,4 @@
-/ api/sniper-bot.js
+// api/sniper-bot.js
 const SNIPER_TOKEN_MINT = "H4FTTQ5nhGdFFqHa3FPd5TpjcXYLAokN8SYFdBq4yERL";
 const MIN_TRC_SNIPER = 250000;
 const GAME_URL = "https://duck-race-society.vercel.app";
@@ -192,4 +192,5 @@ module.exports = async function handler(req, res) {
 
   return res.status(200).json({ ok: true });
 };
+
 
