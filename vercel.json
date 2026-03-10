@@ -1,4 +1,5 @@
 {
+  "regions": ["iad1"],
   "functions": {
     "api/sniper-bot.js": { "maxDuration": 30 },
     "api/setup-sniper-webhook.js": { "maxDuration": 10 }
