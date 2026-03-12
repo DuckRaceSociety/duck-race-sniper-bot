@@ -1,6 +1,19 @@
-bot.start((ctx) => {
+import { Telegraf } from "telegraf"
+import dotenv from "dotenv"
 import { createWallet } from "../wallet/createWallet.js"
-ctx.reply(
+
+dotenv.config()
+
+export function startTelegramBot() {
+
+const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN)
+
+console.log("🦆 Duck Telegram Interface gestartet")
+
+bot.start(async (ctx) => {
+
+await ctx.reply(
+
 `🦆 Duck Trading Bot
 
 Wallet: Not Connected
@@ -35,6 +48,26 @@ inline_keyboard: [
 
 })
 
+bot.action("wallet", async (ctx) => {
+
+const wallet = createWallet()
+
+await ctx.reply(
+
+`💰 Duck Wallet Created
+
+Address:
+${wallet.publicKey}
+
+⚠️ Save your private key safely.`
+
+)
+
+})
+
+bot.launch()
+
+}
 export function startTelegramBot(){
 bot.launch();
 console.log("🦆 Duck Telegram Interface gestartet");
