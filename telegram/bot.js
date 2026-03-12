@@ -1,5 +1,5 @@
 bot.start((ctx) => {
-
+import { createWallet } from "../wallet/createWallet.js"
 ctx.reply(
 `🦆 Duck Trading Bot
 
