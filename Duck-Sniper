@@ -1,0 +1,1520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🦆 Duck Sniper Bot</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg0:      #0d0e11;
+  --bg1:      #13151a;
+  --bg2:      #1a1d24;
+  --bg3:      #21252f;
+  --bg4:      #282d39;
+  --line:     #2a2f3d;
+  --line2:    #343b4f;
+
+  --green:    #00d085;
+  --green2:   #00ff9d;
+  --red:      #ff3b5c;
+  --red2:     #ff6b84;
+  --yellow:   #f5c542;
+  --blue:     #3d9cff;
+  --purple:   #9b72ff;
+  --sol:      #9945FF;
+  --cyan:     #00c2ff;
+
+  --text:     #dce3f0;
+  --text2:    #7a849e;
+  --text3:    #3d4559;
+  --text4:    #212635;
+
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+
+  --radius: 6px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 13px; }
+body {
+  background: var(--bg0);
+  color: var(--text);
+  font-family: var(--mono);
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: 1.5;
+}
+
+/* ── SCANLINE TEXTURE ── */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px);
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ─────────────────────────────────────
+   LAYOUT: 3-col + topbar
+───────────────────────────────────── */
+.app {
+  display: grid;
+  grid-template-rows: 44px 1fr;
+  grid-template-columns: 260px 1fr 300px;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ─────────────────────────────────────
+   TOPBAR
+───────────────────────────────────── */
+.topbar {
+  grid-column: 1 / -1;
+  background: var(--bg1);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  gap: 14px;
+}
+
+.logo {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: -0.3px;
+  color: var(--yellow);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+.logo-emoji { animation: bob 2.5s ease-in-out infinite; display: inline-block; }
+@keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
+.logo sub { font-size: 9px; color: var(--text3); font-weight: 400; letter-spacing: 1px; margin-left: 3px; vertical-align: middle; }
+
+.top-sep { width: 1px; height: 20px; background: var(--line); flex-shrink: 0; }
+
+.status-dot-wrap {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--text2);
+}
+.sdot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  animation: pulsedot 2s ease-in-out infinite;
+}
+@keyframes pulsedot {
+  0%,100%{ box-shadow: 0 0 4px var(--green); }
+  50%    { box-shadow: 0 0 10px var(--green); }
+}
+
+.top-pills { display: flex; gap: 6px; align-items: center; }
+.top-pill {
+  background: var(--bg3);
+  border: 1px solid var(--line2);
+  padding: 3px 9px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--text2);
+  display: flex; align-items: center; gap: 5px;
+}
+.top-pill b { color: var(--text); }
+.top-pill.green b { color: var(--green); }
+.top-pill.red   b { color: var(--red); }
+.top-pill.yellow b { color: var(--yellow); }
+
+.top-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+.btn-primary {
+  background: var(--yellow);
+  color: #000;
+  border: none;
+  padding: 5px 13px;
+  border-radius: var(--radius);
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 11px;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+  transition: filter 0.15s, transform 0.1s;
+}
+.btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.btn-primary:active { transform: translateY(0); }
+.btn-primary.danger { background: var(--red); color: #fff; }
+
+.btn-ghost {
+  background: var(--bg3);
+  border: 1px solid var(--line2);
+  color: var(--text2);
+  padding: 5px 11px;
+  border-radius: var(--radius);
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.btn-ghost:hover { border-color: var(--yellow); color: var(--yellow); }
+
+/* ─────────────────────────────────────
+   LEFT PANEL — WALLET + CONFIG
+───────────────────────────────────── */
+.panel-left {
+  background: var(--bg1);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-section {
+  border-bottom: 1px solid var(--line);
+  padding: 12px 14px;
+}
+.panel-section:last-child { border-bottom: none; }
+
+.sec-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  color: var(--text3);
+  margin-bottom: 10px;
+  display: flex; align-items: center; gap: 6px;
+}
+.sec-label::after {
+  content: '';
+  flex: 1; height: 1px;
+  background: var(--line);
+}
+
+/* Wallet card */
+.wallet-card {
+  background: var(--bg2);
+  border: 1px solid var(--line2);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  position: relative;
+  overflow: hidden;
+}
+.wallet-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 2px;
+  background: linear-gradient(90deg, var(--yellow), var(--sol));
+}
+.wc-top {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.wc-addr {
+  font-size: 11px; color: var(--blue);
+  font-family: var(--mono);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.wc-addr:hover { color: var(--cyan); }
+.wc-badge {
+  background: rgba(0,208,133,0.1);
+  border: 1px solid rgba(0,208,133,0.25);
+  color: var(--green);
+  font-size: 9px; padding: 2px 6px; border-radius: 3px;
+}
+.wc-bals {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.wc-bal {
+  background: var(--bg3);
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+.wc-bal-label { font-size: 9px; color: var(--text3); margin-bottom: 2px; }
+.wc-bal-val { font-size: 15px; font-weight: 700; color: var(--text); }
+.wc-bal-val.sol { color: var(--sol); }
+.wc-bal-usd { font-size: 10px; color: var(--text3); margin-top: 1px; }
+
+.btn-add-wallet {
+  width: 100%;
+  background: transparent;
+  border: 1px dashed var(--line2);
+  color: var(--text3);
+  padding: 7px;
+  border-radius: var(--radius);
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+.btn-add-wallet:hover { border-color: var(--yellow); color: var(--yellow); }
+
+/* Config fields */
+.cfg-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px;
+}
+.cfg-scroll::-webkit-scrollbar { width: 3px; }
+.cfg-scroll::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 3px; }
+
+.field { margin-bottom: 11px; }
+.field-label {
+  font-size: 9px; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--text2);
+  margin-bottom: 5px; display: flex; align-items: center; gap: 5px;
+}
+.field-hint {
+  width: 13px; height: 13px;
+  border-radius: 50%;
+  background: var(--bg3);
+  border: 1px solid var(--line2);
+  font-size: 8px; color: var(--text3);
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: help;
+}
+
+.inp-wrap {
+  display: flex; align-items: stretch;
+  background: var(--bg2);
+  border: 1px solid var(--line2);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.inp-wrap:focus-within { border-color: var(--yellow); }
+.inp-wrap input, .inp-wrap select {
+  flex: 1;
+  background: transparent;
+  border: none; outline: none;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 6px 9px;
+  min-width: 0;
+}
+.inp-wrap select option { background: var(--bg2); }
+.inp-suffix {
+  padding: 6px 9px;
+  font-size: 10px; color: var(--text3);
+  background: var(--bg3);
+  border-left: 1px solid var(--line);
+  display: flex; align-items: center;
+  white-space: nowrap;
+}
+
+.chip-row { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip {
+  background: var(--bg3);
+  border: 1px solid var(--line2);
+  color: var(--text2);
+  font-size: 10px; padding: 4px 9px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.chip:hover { border-color: var(--yellow); color: var(--yellow); }
+.chip.on {
+  background: rgba(245,197,66,0.1);
+  border-color: var(--yellow);
+  color: var(--yellow);
+}
+
+.toggle-line {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 7px;
+}
+.tgl-lbl { font-size: 11px; color: var(--text2); }
+.tgl {
+  width: 30px; height: 17px;
+  background: var(--bg4); border: 1px solid var(--line2);
+  border-radius: 9px; position: relative; cursor: pointer;
+  transition: background 0.2s;
+}
+.tgl.on { background: var(--green); border-color: var(--green); }
+.tgl::after {
+  content: ''; position: absolute;
+  width: 11px; height: 11px; border-radius: 50%;
+  background: #fff; top: 2px; left: 2px;
+  transition: left 0.18s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+.tgl.on::after { left: 15px; }
+
+.btn-snipe-go {
+  width: 100%;
+  padding: 9px;
+  background: linear-gradient(135deg, #f5c542, #ff9100);
+  color: #000;
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  letter-spacing: 0.4px;
+  margin-top: 4px;
+  transition: filter 0.15s, transform 0.1s, box-shadow 0.2s;
+  box-shadow: 0 3px 12px rgba(245,197,66,0.25);
+}
+.btn-snipe-go:hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(245,197,66,0.4); }
+.btn-snipe-go.armed {
+  background: linear-gradient(135deg, #ff3b5c, #c0001a);
+  color: #fff;
+  box-shadow: 0 3px 12px rgba(255,59,92,0.3);
+  animation: armGlow 1.4s ease-in-out infinite;
+}
+@keyframes armGlow {
+  0%,100%{ box-shadow: 0 3px 12px rgba(255,59,92,0.3); }
+  50%    { box-shadow: 0 3px 24px rgba(255,59,92,0.7); }
+}
+
+/* ─────────────────────────────────────
+   CENTER — TOKEN FEED + BUY/SELL
+───────────────────────────────────── */
+.panel-center {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg0);
+}
+
+.center-tabs {
+  display: flex;
+  background: var(--bg1);
+  border-bottom: 1px solid var(--line);
+  padding: 0 14px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.ctab {
+  padding: 11px 14px;
+  font-size: 11px; color: var(--text3);
+  background: none; border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-family: var(--mono);
+  transition: all 0.12s;
+  margin-bottom: -1px;
+  display: flex; align-items: center; gap: 6px;
+}
+.ctab:hover { color: var(--text2); }
+.ctab.active { color: var(--yellow); border-bottom-color: var(--yellow); }
+.ctab-badge {
+  background: var(--bg3); border: 1px solid var(--line);
+  color: var(--text3); font-size: 9px;
+  padding: 1px 5px; border-radius: 3px;
+}
+.ctab.active .ctab-badge { background: rgba(245,197,66,0.1); border-color: rgba(245,197,66,0.3); color: var(--yellow); }
+
+.center-body { flex: 1; overflow-y: auto; padding: 12px 14px; }
+.center-body::-webkit-scrollbar { width: 4px; }
+.center-body::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+
+/* Token list header */
+.feed-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.feed-title { font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.8px; }
+.feed-filters { display: flex; gap: 5px; }
+.ff {
+  background: var(--bg2); border: 1px solid var(--line);
+  color: var(--text3); font-size: 10px; padding: 2px 8px;
+  border-radius: 3px; cursor: pointer; font-family: var(--mono);
+  transition: all 0.12s;
+}
+.ff:hover { color: var(--text2); }
+.ff.on { background: rgba(0,194,255,0.08); border-color: rgba(0,194,255,0.3); color: var(--cyan); }
+
+/* Token row */
+.token-row {
+  display: grid;
+  grid-template-columns: 36px 1fr 90px 80px 80px 70px 90px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.12s;
+  border: 1px solid transparent;
+  margin-bottom: 3px;
+}
+.token-row:hover { background: var(--bg2); border-color: var(--line); }
+.token-row.selected { background: rgba(245,197,66,0.05); border-color: rgba(245,197,66,0.2); }
+.token-row.new-flash { animation: newFlash 0.5s ease; }
+@keyframes newFlash {
+  0%  { background: rgba(0,208,133,0.12); border-color: rgba(0,208,133,0.4); }
+  100%{ background: transparent; border-color: transparent; }
+}
+
+.token-icon {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: var(--bg3);
+  border: 1px solid var(--line2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+  position: relative;
+}
+.token-icon .new-dot {
+  position: absolute; top: -2px; right: -2px;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--green);
+  border: 2px solid var(--bg0);
+  animation: pulsedot 1.5s ease-in-out infinite;
+}
+
+.token-info .t-name { font-size: 12px; font-weight: 600; color: var(--text); }
+.token-info .t-addr { font-size: 10px; color: var(--text3); font-family: var(--mono); margin-top: 1px; cursor: pointer; }
+.token-info .t-addr:hover { color: var(--blue); }
+
+.t-price { font-size: 12px; color: var(--text); text-align: right; font-family: var(--mono); }
+.t-change {
+  font-size: 11px; text-align: right; font-family: var(--mono);
+}
+.t-change.up { color: var(--green); }
+.t-change.down { color: var(--red); }
+
+.t-mc { font-size: 11px; color: var(--text2); text-align: right; }
+.t-age { font-size: 10px; color: var(--text3); text-align: right; }
+
+.t-actions { display: flex; gap: 4px; justify-content: flex-end; }
+.btn-buy-quick {
+  background: rgba(0,208,133,0.1);
+  border: 1px solid rgba(0,208,133,0.25);
+  color: var(--green);
+  padding: 4px 9px; border-radius: 4px;
+  font-family: var(--mono); font-size: 10px;
+  cursor: pointer; transition: all 0.12s;
+}
+.btn-buy-quick:hover { background: rgba(0,208,133,0.2); box-shadow: 0 0 8px rgba(0,208,133,0.2); }
+.btn-snipe-quick {
+  background: rgba(245,197,66,0.1);
+  border: 1px solid rgba(245,197,66,0.25);
+  color: var(--yellow);
+  padding: 4px 9px; border-radius: 4px;
+  font-family: var(--mono); font-size: 10px;
+  cursor: pointer; transition: all 0.12s;
+}
+.btn-snipe-quick:hover { background: rgba(245,197,66,0.2); }
+
+/* Column headers */
+.token-head {
+  display: grid;
+  grid-template-columns: 36px 1fr 90px 80px 80px 70px 90px;
+  gap: 8px;
+  padding: 5px 10px 6px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 6px;
+}
+.th { font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text3); }
+.th:not(:nth-child(1)):not(:nth-child(2)) { text-align: right; }
+
+/* ── BUY/SELL PANEL ── */
+.buysell-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+
+.bs-card {
+  background: var(--bg1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.bs-head {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.bs-title { font-size: 11px; font-weight: 600; }
+.bs-title.buy  { color: var(--green); }
+.bs-title.sell { color: var(--red); }
+.bs-body { padding: 10px 12px; }
+
+.bs-field { margin-bottom: 9px; }
+.bs-field label { display: block; font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
+.bs-input-wrap {
+  display: flex;
+  background: var(--bg2); border: 1px solid var(--line2);
+  border-radius: 5px; overflow: hidden;
+  transition: border-color 0.15s;
+}
+.bs-input-wrap:focus-within { border-color: var(--green); }
+.bs-input-wrap.sell:focus-within { border-color: var(--red); }
+.bs-input-wrap input {
+  flex: 1; background: transparent; border: none; outline: none;
+  color: var(--text); font-family: var(--mono); font-size: 12px;
+  padding: 6px 8px;
+}
+.bs-suf {
+  padding: 6px 8px; font-size: 10px; color: var(--text3);
+  background: var(--bg3); border-left: 1px solid var(--line);
+  display: flex; align-items: center;
+}
+
+.pct-row { display: flex; gap: 4px; margin-top: 5px; }
+.pct-btn {
+  flex: 1; background: var(--bg3); border: 1px solid var(--line);
+  color: var(--text3); font-size: 10px; padding: 4px 2px;
+  border-radius: 3px; cursor: pointer; text-align: center;
+  font-family: var(--mono); transition: all 0.12s;
+}
+.pct-btn:hover { border-color: var(--green); color: var(--green); }
+.pct-btn.sell-pct:hover { border-color: var(--red); color: var(--red); }
+
+.btn-execute-buy {
+  width: 100%; padding: 8px;
+  background: var(--green); color: #000;
+  border: none; border-radius: 5px;
+  font-family: var(--sans); font-weight: 700; font-size: 11px;
+  cursor: pointer; margin-top: 6px;
+  transition: filter 0.12s, transform 0.1s;
+  box-shadow: 0 2px 10px rgba(0,208,133,0.2);
+}
+.btn-execute-buy:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.btn-execute-buy:active { transform: translateY(0); }
+
+.btn-execute-sell {
+  width: 100%; padding: 8px;
+  background: var(--red); color: #fff;
+  border: none; border-radius: 5px;
+  font-family: var(--sans); font-weight: 700; font-size: 11px;
+  cursor: pointer; margin-top: 6px;
+  transition: filter 0.12s, transform 0.1s;
+  box-shadow: 0 2px 10px rgba(255,59,92,0.2);
+}
+.btn-execute-sell:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+/* selected token bar */
+.selected-token-bar {
+  background: var(--bg1);
+  border: 1px solid var(--line2);
+  border-radius: var(--radius);
+  padding: 9px 12px;
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 10px;
+}
+.stb-icon { font-size: 22px; }
+.stb-info { flex: 1; }
+.stb-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.stb-addr { font-size: 10px; color: var(--text3); margin-top: 1px; }
+.stb-price { font-size: 14px; font-weight: 700; color: var(--yellow); font-family: var(--mono); }
+.stb-mc { font-size: 10px; color: var(--text2); }
+
+/* ─────────────────────────────────────
+   RIGHT PANEL — TX LOG + POSITIONS
+───────────────────────────────────── */
+.panel-right {
+  background: var(--bg1);
+  border-left: 1px solid var(--line);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+.pr-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg1);
+  flex-shrink: 0;
+}
+.prtab {
+  flex: 1; padding: 10px 6px;
+  font-size: 10px; color: var(--text3);
+  background: none; border: none; border-bottom: 2px solid transparent;
+  cursor: pointer; font-family: var(--mono);
+  transition: all 0.12s; text-align: center;
+  margin-bottom: -1px;
+  text-transform: uppercase; letter-spacing: 0.8px;
+}
+.prtab:hover { color: var(--text2); }
+.prtab.active { color: var(--yellow); border-bottom-color: var(--yellow); }
+
+.pr-body { flex: 1; overflow-y: auto; padding: 10px 12px; }
+.pr-body::-webkit-scrollbar { width: 3px; }
+.pr-body::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+
+/* Positions */
+.pos-card {
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 9px 11px;
+  margin-bottom: 7px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.pos-card:hover { border-color: var(--line2); }
+.pos-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0;
+  width: 3px; height: 100%;
+  border-radius: 4px 0 0 4px;
+}
+.pos-card.profit::before { background: var(--green); }
+.pos-card.loss::before   { background: var(--red); }
+
+.pos-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+.pos-name { font-size: 12px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 6px; }
+.pos-name span { font-size: 14px; }
+.pos-pnl { font-size: 12px; font-weight: 700; font-family: var(--mono); }
+.pos-pnl.profit { color: var(--green); }
+.pos-pnl.loss   { color: var(--red); }
+
+.pos-row { display: flex; justify-content: space-between; font-size: 10px; color: var(--text3); margin-bottom: 2px; }
+.pos-row span { color: var(--text2); font-family: var(--mono); }
+
+.pos-actions { display: flex; gap: 5px; margin-top: 7px; }
+.pos-btn {
+  flex: 1; padding: 5px; border-radius: 4px;
+  font-family: var(--mono); font-size: 10px;
+  cursor: pointer; text-align: center; transition: all 0.12s;
+  border: 1px solid;
+}
+.pos-btn.sell-25 { background: rgba(255,59,92,0.06); border-color: rgba(255,59,92,0.2); color: var(--red); }
+.pos-btn.sell-50 { background: rgba(255,59,92,0.1); border-color: rgba(255,59,92,0.3); color: var(--red); }
+.pos-btn.sell-100 { background: rgba(255,59,92,0.15); border-color: rgba(255,59,92,0.4); color: var(--red); }
+.pos-btn:hover { filter: brightness(1.2); }
+
+/* TX entries */
+.tx-entry {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(42,47,61,0.6);
+  animation: fadeSlide 0.3s ease;
+}
+@keyframes fadeSlide { from { opacity:0; transform: translateY(-4px); } to { opacity:1; } }
+.tx-entry:last-child { border-bottom: none; }
+.tx-icon {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; flex-shrink: 0;
+  margin-top: 1px;
+}
+.tx-icon.buy  { background: rgba(0,208,133,0.1);  color: var(--green); }
+.tx-icon.sell { background: rgba(255,59,92,0.1);  color: var(--red); }
+.tx-icon.snipe{ background: rgba(245,197,66,0.1); color: var(--yellow); }
+.tx-icon.fail { background: rgba(122,132,158,0.1); color: var(--text3); }
+
+.tx-content { flex: 1; min-width: 0; }
+.tx-title { font-size: 11px; color: var(--text); font-weight: 500; }
+.tx-sub { font-size: 10px; color: var(--text3); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tx-sub a { color: var(--blue); cursor: pointer; }
+.tx-sub a:hover { color: var(--cyan); }
+.tx-right { text-align: right; flex-shrink: 0; }
+.tx-amount { font-size: 11px; font-family: var(--mono); font-weight: 600; }
+.tx-amount.buy  { color: var(--red); }
+.tx-amount.sell { color: var(--green); }
+.tx-time { font-size: 9px; color: var(--text3); margin-top: 2px; }
+
+/* ── NOTIFICATIONS ── */
+.toasts {
+  position: fixed; bottom: 16px; right: 16px;
+  display: flex; flex-direction: column-reverse; gap: 7px;
+  z-index: 9000; width: 260px;
+}
+.toast {
+  background: var(--bg2);
+  border: 1px solid var(--line2);
+  border-radius: var(--radius);
+  padding: 9px 12px;
+  display: flex; gap: 8px; align-items: flex-start;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  animation: toastIn 0.25s ease;
+  transition: opacity 0.3s, transform 0.3s;
+  position: relative; overflow: hidden;
+}
+.toast::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0;
+  height: 2px; width: 100%;
+  animation: shrink var(--dur, 3s) linear forwards;
+}
+.toast.success::after { background: var(--green); }
+.toast.warn::after    { background: var(--yellow); }
+.toast.error::after   { background: var(--red); }
+.toast.info::after    { background: var(--blue); }
+@keyframes shrink { from { width: 100%; } to { width: 0%; } }
+@keyframes toastIn { from { transform: translateX(14px); opacity: 0; } to { opacity: 1; } }
+.toast-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+.toast-content { flex: 1; }
+.toast-title { font-size: 11px; font-weight: 600; color: var(--text); }
+.toast-msg { font-size: 10px; color: var(--text2); margin-top: 1px; line-height: 1.4; }
+
+/* ── LIVE PULSE ROWS ── */
+.live-label {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 9px; color: var(--red);
+  background: rgba(255,59,92,0.08); border: 1px solid rgba(255,59,92,0.2);
+  padding: 2px 6px; border-radius: 3px;
+  animation: livePulse 1.2s steps(1) infinite;
+}
+@keyframes livePulse { 50%{ opacity: 0.4; } }
+
+/* ── EMPTY STATE ── */
+.empty-state {
+  text-align: center; padding: 24px 12px;
+  color: var(--text3); font-size: 11px;
+  line-height: 1.8;
+}
+.empty-state .emoji { font-size: 28px; display: block; margin-bottom: 8px; opacity: 0.4; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ════════════════ TOPBAR ════════════════ -->
+  <header class="topbar">
+    <div class="logo">
+      <span class="logo-emoji">🦆</span>
+      DUCK SNIPER
+      <sub>v1.0 · RAYDIUM</sub>
+    </div>
+
+    <div class="top-sep"></div>
+    <div class="status-dot-wrap">
+      <div class="sdot"></div>
+      SOLANA MAINNET
+    </div>
+    <div class="top-sep"></div>
+
+    <div class="top-pills">
+      <div class="top-pill yellow">SOL <b id="sol-price">$149.82</b></div>
+      <div class="top-pill green">24H SNIPES <b id="snipe-count">0</b></div>
+      <div class="top-pill green">SESSION P&amp;L <b id="session-pnl">+0.000 SOL</b></div>
+      <div class="top-pill"><span class="live-label">● LIVE</span></div>
+    </div>
+
+    <div class="top-right">
+      <button class="btn-ghost" onclick="openSettings()">⚙ Settings</button>
+      <button class="btn-primary" id="arm-btn" onclick="toggleArm()">⚡ ARM BOT</button>
+    </div>
+  </header>
+
+  <!-- ════════════════ LEFT — WALLET + CONFIG ════════════════ -->
+  <aside class="panel-left">
+    <div class="panel-section">
+      <div class="sec-label">Wallet</div>
+      <div class="wallet-card">
+        <div class="wc-top">
+          <span class="wc-addr" onclick="copyAddr()" title="Click to copy">7xKX...tg2C</span>
+          <span class="wc-badge">● CONNECTED</span>
+        </div>
+        <div class="wc-bals">
+          <div class="wc-bal">
+            <div class="wc-bal-label">SOL</div>
+            <div class="wc-bal-val sol" id="sol-bal">2.481</div>
+            <div class="wc-bal-usd" id="sol-usd">≈ $371.88</div>
+          </div>
+          <div class="wc-bal">
+            <div class="wc-bal-label">$TRC</div>
+            <div class="wc-bal-val" style="color:var(--yellow)">142,500</div>
+            <div class="wc-bal-usd">Access ✓</div>
+          </div>
+        </div>
+      </div>
+      <button class="btn-add-wallet" onclick="addWallet()">+ Add Wallet</button>
+    </div>
+
+    <div class="cfg-scroll">
+      <div class="sec-label">Snipe Config</div>
+
+      <div class="field">
+        <div class="field-label">Buy Amount <span class="field-hint" title="SOL per snipe">?</span></div>
+        <div class="inp-wrap">
+          <input type="number" value="0.1" step="0.05" min="0.01" id="cfg-amount" />
+          <div class="inp-suffix">SOL</div>
+        </div>
+        <div class="chip-row" style="margin-top:5px;">
+          <div class="chip" onclick="setAmt(0.05,this)">0.05</div>
+          <div class="chip on" onclick="setAmt(0.1,this)">0.1</div>
+          <div class="chip" onclick="setAmt(0.25,this)">0.25</div>
+          <div class="chip" onclick="setAmt(0.5,this)">0.5</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Slippage <span class="field-hint" title="Max slippage %">?</span></div>
+        <div class="inp-wrap">
+          <input type="number" value="15" step="1" min="1" max="50" id="cfg-slippage" />
+          <div class="inp-suffix">%</div>
+        </div>
+        <div class="chip-row" style="margin-top:5px;">
+          <div class="chip" onclick="setSlip(5,this)">5%</div>
+          <div class="chip" onclick="setSlip(10,this)">10%</div>
+          <div class="chip on" onclick="setSlip(15,this)">15%</div>
+          <div class="chip" onclick="setSlip(25,this)">25%</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Priority Fee <span class="field-hint" title="Compute unit price">?</span></div>
+        <div class="inp-wrap">
+          <input type="number" value="0.001" step="0.0005" id="cfg-fee" />
+          <div class="inp-suffix">SOL</div>
+        </div>
+        <div class="chip-row" style="margin-top:5px;">
+          <div class="chip" onclick="setFee(0.0005,this)">LOW</div>
+          <div class="chip on" onclick="setFee(0.001,this)">MED</div>
+          <div class="chip" onclick="setFee(0.003,this)">HIGH</div>
+          <div class="chip" onclick="setFee(0.005,this)">TURBO</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Min Liquidity</div>
+        <div class="inp-wrap">
+          <input type="number" value="5" step="1" id="cfg-minliq" />
+          <div class="inp-suffix">SOL</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Max Market Cap</div>
+        <div class="inp-wrap">
+          <input type="number" value="500000" step="10000" id="cfg-maxmc" />
+          <div class="inp-suffix">USD</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Auto-Sell Target</div>
+        <div class="inp-wrap">
+          <input type="number" value="2" step="0.5" id="cfg-target" />
+          <div class="inp-suffix">× (2x)</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Stop Loss</div>
+        <div class="inp-wrap">
+          <input type="number" value="30" step="5" id="cfg-sl" />
+          <div class="inp-suffix">%</div>
+        </div>
+      </div>
+
+      <div class="sec-label" style="margin-top:4px;">Filters</div>
+      <div class="toggle-line"><span class="tgl-lbl">Freeze Authority Check</span><div class="tgl on" onclick="this.classList.toggle('on')"></div></div>
+      <div class="toggle-line"><span class="tgl-lbl">Mint Authority Check</span><div class="tgl on" onclick="this.classList.toggle('on')"></div></div>
+      <div class="toggle-line"><span class="tgl-lbl">Rugcheck Score &gt; 80</span><div class="tgl on" onclick="this.classList.toggle('on')"></div></div>
+      <div class="toggle-line"><span class="tgl-lbl">Skip Pump.fun Tokens</span><div class="tgl" onclick="this.classList.toggle('on')"></div></div>
+      <div class="toggle-line"><span class="tgl-lbl">Auto Take-Profit</span><div class="tgl on" onclick="this.classList.toggle('on')"></div></div>
+      <div class="toggle-line"><span class="tgl-lbl">Auto Stop-Loss</span><div class="tgl on" onclick="this.classList.toggle('on')"></div></div>
+      <div class="toggle-line"><span class="tgl-lbl">Telegram Alerts</span><div class="tgl on" onclick="this.classList.toggle('on')"></div></div>
+
+      <button class="btn-snipe-go" id="snipe-go-btn" onclick="toggleBot()">⚡ ACTIVATE SNIPER</button>
+    </div>
+  </aside>
+
+  <!-- ════════════════ CENTER ════════════════ -->
+  <main class="panel-center">
+    <div class="center-tabs">
+      <button class="ctab active" onclick="switchCtab(this,'feed')">🔴 New Listings <span class="ctab-badge" id="feed-count">0</span></button>
+      <button class="ctab" onclick="switchCtab(this,'buysell')">⚡ Buy / Sell</button>
+      <button class="ctab" onclick="switchCtab(this,'watchlist')">👁 Watchlist <span class="ctab-badge">0</span></button>
+    </div>
+
+    <!-- FEED TAB -->
+    <div class="center-body" id="tab-feed">
+      <div class="feed-header">
+        <div class="feed-title">Raydium New Pools <span class="live-label" style="margin-left:6px;">● SCANNING</span></div>
+        <div class="feed-filters">
+          <div class="ff on" onclick="toggleFF(this)">ALL</div>
+          <div class="ff" onclick="toggleFF(this)">&lt;100K MC</div>
+          <div class="ff" onclick="toggleFF(this)">LIQ &gt;5 SOL</div>
+          <div class="ff" onclick="toggleFF(this)">SAFE</div>
+        </div>
+      </div>
+      <div class="token-head">
+        <div class="th"></div>
+        <div class="th">TOKEN</div>
+        <div class="th">PRICE</div>
+        <div class="th">CHANGE</div>
+        <div class="th">MKT CAP</div>
+        <div class="th">AGE</div>
+        <div class="th">ACTION</div>
+      </div>
+      <div id="token-list">
+        <div class="empty-state">
+          <span class="emoji">🔍</span>
+          Scanning Raydium for new pools...<br>
+          <span style="color:var(--text3)">Arm the bot to start auto-sniping</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- BUY/SELL TAB -->
+    <div class="center-body" id="tab-buysell" style="display:none;">
+      <div id="selected-token-bar" class="selected-token-bar">
+        <div style="font-size:22px;">🎯</div>
+        <div class="stb-info">
+          <div class="stb-name">No token selected</div>
+          <div class="stb-addr">Select a token from the feed or paste a contract address</div>
+        </div>
+        <div>
+          <div class="stb-price" id="stb-price">—</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:10px;">
+        <div class="inp-wrap" style="border-radius:var(--radius);">
+          <input type="text" placeholder="Paste contract address (CA)..." id="ca-input" style="font-size:11px;" />
+          <div class="inp-suffix" style="cursor:pointer;color:var(--yellow);" onclick="loadCA()">LOAD ▶</div>
+        </div>
+      </div>
+
+      <div class="buysell-wrap">
+        <div class="bs-card">
+          <div class="bs-head">
+            <span class="bs-title buy">▲ BUY</span>
+            <span style="font-size:10px;color:var(--text3);">Bal: <b style="color:var(--text)" id="buy-bal">2.481 SOL</b></span>
+          </div>
+          <div class="bs-body">
+            <div class="bs-field">
+              <label>Amount</label>
+              <div class="bs-input-wrap">
+                <input type="number" value="0.1" step="0.05" id="buy-amount" />
+                <div class="bs-suf">SOL</div>
+              </div>
+              <div class="pct-row">
+                <div class="pct-btn" onclick="setBuyPct(25)">25%</div>
+                <div class="pct-btn" onclick="setBuyPct(50)">50%</div>
+                <div class="pct-btn" onclick="setBuyPct(75)">75%</div>
+                <div class="pct-btn" onclick="setBuyPct(100)">MAX</div>
+              </div>
+            </div>
+            <div class="bs-field">
+              <label>Slippage</label>
+              <div class="bs-input-wrap">
+                <input type="number" value="15" id="buy-slip" />
+                <div class="bs-suf">%</div>
+              </div>
+            </div>
+            <button class="btn-execute-buy" onclick="executeBuy()">▲ BUY NOW</button>
+          </div>
+        </div>
+        <div class="bs-card">
+          <div class="bs-head">
+            <span class="bs-title sell">▼ SELL</span>
+            <span style="font-size:10px;color:var(--text3);">Bal: <b style="color:var(--text)" id="sell-bal">—</b></span>
+          </div>
+          <div class="bs-body">
+            <div class="bs-field">
+              <label>Tokens to Sell</label>
+              <div class="bs-input-wrap sell">
+                <input type="text" placeholder="0" id="sell-amount" />
+                <div class="bs-suf" id="sell-token-symbol">TOKEN</div>
+              </div>
+              <div class="pct-row">
+                <div class="pct-btn sell-pct" onclick="setSellPct(25)">25%</div>
+                <div class="pct-btn sell-pct" onclick="setSellPct(50)">50%</div>
+                <div class="pct-btn sell-pct" onclick="setSellPct(75)">75%</div>
+                <div class="pct-btn sell-pct" onclick="setSellPct(100)">ALL</div>
+              </div>
+            </div>
+            <div class="bs-field">
+              <label>Slippage</label>
+              <div class="bs-input-wrap sell">
+                <input type="number" value="15" id="sell-slip" />
+                <div class="bs-suf">%</div>
+              </div>
+            </div>
+            <button class="btn-execute-sell" onclick="executeSell()">▼ SELL NOW</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec-label">Quick Actions</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;">
+        <button class="btn-execute-buy" style="padding:6px;font-size:10px;" onclick="quickBuy(0.05)">BUY 0.05 SOL</button>
+        <button class="btn-execute-buy" style="padding:6px;font-size:10px;" onclick="quickBuy(0.1)">BUY 0.1 SOL</button>
+        <button class="btn-execute-buy" style="padding:6px;font-size:10px;" onclick="quickBuy(0.25)">BUY 0.25 SOL</button>
+        <button class="btn-execute-buy" style="padding:6px;font-size:10px;" onclick="quickBuy(0.5)">BUY 0.5 SOL</button>
+      </div>
+    </div>
+
+    <!-- WATCHLIST TAB -->
+    <div class="center-body" id="tab-watchlist" style="display:none;">
+      <div class="empty-state">
+        <span class="emoji">👁</span>
+        Watchlist is empty<br>
+        <span style="color:var(--text3)">Click ★ on a token to add it here</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- ════════════════ RIGHT — POSITIONS + TX ════════════════ -->
+  <aside class="panel-right">
+    <div class="pr-tabs">
+      <button class="prtab active" onclick="switchPrtab(this,'positions')">Positions</button>
+      <button class="prtab" onclick="switchPrtab(this,'txlog')">TX Log</button>
+    </div>
+    <div class="pr-body" id="pr-positions">
+      <div class="empty-state" id="pos-empty">
+        <span class="emoji">📂</span>
+        No open positions<br>
+        <span style="color:var(--text3)">Snipe a token to open a position</span>
+      </div>
+    </div>
+    <div class="pr-body" id="pr-txlog" style="display:none;">
+      <div id="tx-log-wrap">
+        <div class="empty-state">
+          <span class="emoji">📋</span>
+          No transactions yet<br>
+          <span style="color:var(--text3)">Buys, sells and snipes will appear here</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- TOASTS -->
+<div class="toasts" id="toasts"></div>
+
+<script>
+// ─────────────────────────────────
+// STATE
+// ─────────────────────────────────
+let botActive = false;
+let solBal = 2.481;
+let sessionPnl = 0;
+let snipeCount = 0;
+let positions = [];
+let txEntries = [];
+let tokenFeed = [];
+let feedCount = 0;
+let selectedToken = null;
+
+const ICONS = ['🪙','💎','🔥','🚀','⚡','🌊','🎯','🦊','🐉','🌙','🎪','💫'];
+const NAMES = ['BONK2','PEPE2','WOOF','MAGA2','GIGA','COPE','BOME2','SAMO2','MYRO2','WEN2','POPCAT2','CHUD'];
+const TICKERS = ['BNK2','PPE2','WF','MG2','GG','CP','BM2','SM2','MR2','WN2','PC2','CHD'];
+
+// ─────────────────────────────────
+// TABS
+// ─────────────────────────────────
+function switchCtab(el, id) {
+  document.querySelectorAll('.ctab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  ['feed','buysell','watchlist'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = t === id ? '' : 'none';
+  });
+}
+function switchPrtab(el, id) {
+  document.querySelectorAll('.prtab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('pr-positions').style.display = id === 'positions' ? '' : 'none';
+  document.getElementById('pr-txlog').style.display = id === 'txlog' ? '' : 'none';
+}
+
+// ─────────────────────────────────
+// CHIP HELPERS
+// ─────────────────────────────────
+function setAmt(v, el) {
+  chipSelect(el); document.getElementById('cfg-amount').value = v;
+}
+function setSlip(v, el) {
+  chipSelect(el); document.getElementById('cfg-slippage').value = v;
+}
+function setFee(v, el) { chipSelect(el); document.getElementById('cfg-fee').value = v; }
+function chipSelect(el) {
+  el.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('on'));
+  el.classList.add('on');
+}
+function toggleFF(el) {
+  document.querySelectorAll('.ff').forEach(f => f.classList.remove('on'));
+  el.classList.add('on');
+}
+
+// ─────────────────────────────────
+// BOT ARM/DISARM
+// ─────────────────────────────────
+function toggleBot() {
+  botActive = !botActive;
+  const btn  = document.getElementById('snipe-go-btn');
+  const abtn = document.getElementById('arm-btn');
+  if (botActive) {
+    btn.textContent  = '⏹ DEACTIVATE SNIPER';
+    btn.classList.add('armed');
+    abtn.textContent = '⏹ DISARM';
+    abtn.classList.add('danger');
+    toast('success','⚡ Sniper Armed','Scanning Raydium for new pools...', 4000);
+    startFeedSimulation();
+  } else {
+    btn.textContent  = '⚡ ACTIVATE SNIPER';
+    btn.classList.remove('armed');
+    abtn.textContent = '⚡ ARM BOT';
+    abtn.classList.remove('danger');
+    toast('warn','⏹ Sniper Off','Auto-sniper deactivated.');
+  }
+}
+function toggleArm() { toggleBot(); }
+
+// ─────────────────────────────────
+// TOKEN FEED SIMULATION
+// ─────────────────────────────────
+function startFeedSimulation() {
+  spawnToken(); // immediate
+  setInterval(() => { if (botActive) spawnToken(); }, 4500 + Math.random() * 3000);
+}
+
+function spawnToken() {
+  const idx   = Math.floor(Math.random() * NAMES.length);
+  const mc    = Math.floor(50000 + Math.random() * 450000);
+  const liq   = (2 + Math.random() * 30).toFixed(2);
+  const price = (0.000001 + Math.random() * 0.001).toFixed(8);
+  const safe  = Math.random() > 0.3;
+  const token = {
+    id:     Date.now(),
+    icon:   ICONS[Math.floor(Math.random() * ICONS.length)],
+    name:   NAMES[idx] + '_' + Math.floor(Math.random()*999),
+    ticker: TICKERS[idx],
+    addr:   randomAddr(),
+    price:  parseFloat(price),
+    change: (Math.random() * 80 - 10).toFixed(1),
+    mc:     mc,
+    liq:    parseFloat(liq),
+    age:    'just now',
+    safe:   safe,
+  };
+  tokenFeed.unshift(token);
+  if (tokenFeed.length > 30) tokenFeed.pop();
+  feedCount++;
+  document.getElementById('feed-count').textContent = feedCount;
+  renderFeed();
+
+  // Auto-snipe if bot active & passes filters
+  const minLiq = parseFloat(document.getElementById('cfg-minliq').value) || 5;
+  const maxMC  = parseFloat(document.getElementById('cfg-maxmc').value) || 500000;
+  if (botActive && token.liq >= minLiq && token.mc <= maxMC && token.safe) {
+    setTimeout(() => autoSnipe(token), 300 + Math.random() * 700);
+  }
+
+  // Price updates
+  setInterval(() => {
+    token.change = (parseFloat(token.change) + (Math.random()*6-2)).toFixed(1);
+    token.price  = Math.max(0.000000001, token.price * (1 + (Math.random()*0.04 - 0.015)));
+    renderFeed();
+    updatePositionPrices(token);
+  }, 2500 + Math.random() * 2000);
+}
+
+function renderFeed() {
+  const list = document.getElementById('token-list');
+  if (!tokenFeed.length) { list.innerHTML = ''; return; }
+  list.innerHTML = tokenFeed.slice(0, 15).map(t => `
+    <div class="token-row${selectedToken?.id === t.id ? ' selected' : ''} new-flash"
+         onclick="selectToken(${t.id})">
+      <div class="token-icon">
+        ${t.icon}
+        ${t.age === 'just now' ? '<div class="new-dot"></div>' : ''}
+      </div>
+      <div class="token-info">
+        <div class="t-name">${t.name} <span style="color:var(--text3);font-size:10px;">${t.ticker}</span></div>
+        <div class="t-addr" onclick="event.stopPropagation();copyText('${t.addr}')">${t.addr.slice(0,6)}...${t.addr.slice(-4)}</div>
+      </div>
+      <div class="t-price">$${t.price.toFixed(t.price < 0.0001 ? 8 : 6)}</div>
+      <div class="t-change ${parseFloat(t.change) >= 0 ? 'up' : 'down'}">${parseFloat(t.change) >= 0 ? '+' : ''}${t.change}%</div>
+      <div class="t-mc">${fmtMC(t.mc)}</div>
+      <div class="t-age">${t.age}</div>
+      <div class="t-actions">
+        <button class="btn-buy-quick" onclick="event.stopPropagation();quickBuyToken(${t.id})">BUY</button>
+        <button class="btn-snipe-quick" onclick="event.stopPropagation();addToWatchlist(${t.id})">★</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function fmtMC(v) {
+  if (v >= 1000000) return '$' + (v/1000000).toFixed(2) + 'M';
+  if (v >= 1000) return '$' + (v/1000).toFixed(0) + 'K';
+  return '$' + v;
+}
+
+// ─────────────────────────────────
+// SELECT TOKEN
+// ─────────────────────────────────
+function selectToken(id) {
+  selectedToken = tokenFeed.find(t => t.id === id);
+  if (!selectedToken) return;
+  renderFeed();
+  // update buy/sell panel
+  const bar = document.getElementById('selected-token-bar');
+  bar.innerHTML = `
+    <div style="font-size:22px;">${selectedToken.icon}</div>
+    <div class="stb-info">
+      <div class="stb-name">${selectedToken.name} <span style="color:var(--text3);font-size:10px;">${selectedToken.ticker}</span></div>
+      <div class="stb-addr">${selectedToken.addr}</div>
+    </div>
+    <div>
+      <div class="stb-price">$${selectedToken.price.toFixed(8)}</div>
+      <div class="stb-mc" style="text-align:right;">${fmtMC(selectedToken.mc)}</div>
+    </div>
+  `;
+  document.getElementById('sell-token-symbol').textContent = selectedToken.ticker;
+  document.getElementById('ca-input').value = selectedToken.addr;
+}
+
+// ─────────────────────────────────
+// AUTO SNIPE
+// ─────────────────────────────────
+function autoSnipe(token) {
+  const amt = parseFloat(document.getElementById('cfg-amount').value) || 0.1;
+  if (solBal < amt) { toast('error','⚠ Insufficient SOL', `Need ${amt} SOL, have ${solBal.toFixed(3)}`); return; }
+  solBal -= amt + 0.001;
+  snipeCount++;
+  updateTopbar();
+
+  const txHash = randomHash();
+  const tokensReceived = Math.floor((amt / token.price) * (1 - 0.015));
+  addPosition(token, amt, token.price, tokensReceived);
+  addTx('snipe', `Sniped ${token.name}`, `${amt} SOL · ${fmtAddr(txHash)}`, -amt, txHash);
+  toast('success', `🎯 Sniped ${token.name}!`, `${amt} SOL · ${tokensReceived.toLocaleString()} ${token.ticker} received`);
+}
+
+function quickBuyToken(id) {
+  const t = tokenFeed.find(x => x.id === id);
+  if (t) { selectToken(id); autoSnipe(t); }
+}
+
+function quickBuy(amt) {
+  if (!selectedToken) { toast('warn','No token selected','Select a token from the feed first.'); return; }
+  const t = selectedToken;
+  if (solBal < amt) { toast('error','⚠ Insufficient SOL', `Need ${amt} SOL`); return; }
+  solBal -= amt + 0.001;
+  snipeCount++;
+  updateTopbar();
+  const tokensReceived = Math.floor((amt / t.price) * (1 - 0.015));
+  addPosition(t, amt, t.price, tokensReceived);
+  addTx('buy', `Bought ${t.name}`, `${amt} SOL · ${fmtAddr(randomHash())}`, -amt, randomHash());
+  toast('success', `▲ Bought ${t.name}`, `${amt} SOL · ${tokensReceived.toLocaleString()} ${t.ticker}`);
+}
+
+function executeBuy() {
+  const amt = parseFloat(document.getElementById('buy-amount').value) || 0.1;
+  quickBuy(amt);
+}
+
+function executeSell() {
+  if (!selectedToken || !positions.length) {
+    toast('warn','No position','No open position for this token.'); return;
+  }
+  const pos = positions.find(p => p.token.id === selectedToken.id);
+  if (!pos) { toast('warn','No position','Not holding this token.'); return; }
+  sellPosition(pos, 100);
+}
+
+// ─────────────────────────────────
+// POSITIONS
+// ─────────────────────────────────
+function addPosition(token, solSpent, entryPrice, tokens) {
+  const existing = positions.find(p => p.token.id === token.id);
+  if (existing) {
+    existing.tokens    += tokens;
+    existing.solSpent  += solSpent;
+    existing.entryPrice = (existing.solSpent / existing.tokens) * existing.tokens; // avg
+  } else {
+    positions.push({ token, solSpent, entryPrice, tokens, id: Date.now() });
+  }
+  renderPositions();
+  document.getElementById('pos-empty').style.display = 'none';
+}
+
+function updatePositionPrices(updatedToken) {
+  let totalPnl = 0;
+  positions.forEach(p => { if (p.token.id === updatedToken.id) p.token.price = updatedToken.price; });
+  positions.forEach(p => {
+    const cur   = p.token.price * p.tokens;
+    const pnl   = cur - p.solSpent;
+    totalPnl += pnl;
+    const target = parseFloat(document.getElementById('cfg-target').value) || 2;
+    const sl     = parseFloat(document.getElementById('cfg-sl').value) / 100 || 0.3;
+    if (botActive && pnl / p.solSpent >= (target - 1)) {
+      toast('success',`🚀 Take-Profit ${p.token.name}!`, `+${(pnl/p.solSpent*100).toFixed(0)}% · Auto-selling...`);
+      setTimeout(() => sellPosition(p, 100), 600);
+    } else if (botActive && pnl / p.solSpent <= -sl) {
+      toast('error',`🛑 Stop-Loss ${p.token.name}`, `${(pnl/p.solSpent*100).toFixed(0)}% · Auto-selling...`);
+      setTimeout(() => sellPosition(p, 100), 600);
+    }
+  });
+  sessionPnl = totalPnl;
+  updateTopbar();
+  renderPositions();
+}
+
+function sellPosition(pos, pct) {
+  const amount  = pos.tokens * (pct / 100);
+  const solOut  = pos.token.price * amount * (1 - 0.015);
+  const pnl     = solOut - pos.solSpent * (pct / 100);
+  solBal       += solOut;
+  sessionPnl   += pnl;
+  if (pct === 100) {
+    positions = positions.filter(p => p.id !== pos.id);
+    if (!positions.length) document.getElementById('pos-empty').style.display = '';
+  } else {
+    pos.tokens   -= amount;
+    pos.solSpent *= (1 - pct / 100);
+  }
+  addTx('sell', `Sold ${pct}% ${pos.token.name}`,
+    `${solOut.toFixed(4)} SOL received · ${pnl >= 0 ? '+' : ''}${pnl.toFixed(4)} SOL`,
+    solOut, randomHash());
+  toast(pnl >= 0 ? 'success' : 'error',
+    `▼ Sold ${pos.token.name}`,
+    `${pnl >= 0 ? '+' : ''}${pnl.toFixed(4)} SOL · ${(pnl/pos.solSpent*100*(100/pct)).toFixed(1)}%`);
+  updateTopbar();
+  renderPositions();
+}
+
+function renderPositions() {
+  const wrap = document.getElementById('pr-positions');
+  const existingCards = wrap.querySelectorAll('.pos-card');
+  existingCards.forEach(c => c.remove());
+  positions.forEach(pos => {
+    const cur  = pos.token.price * pos.tokens;
+    const pnl  = cur - pos.solSpent;
+    const pct  = (pnl / pos.solSpent * 100).toFixed(1);
+    const card = document.createElement('div');
+    card.className = `pos-card ${pnl >= 0 ? 'profit' : 'loss'}`;
+    card.innerHTML = `
+      <div class="pos-top">
+        <div class="pos-name"><span>${pos.token.icon}</span>${pos.token.name}</div>
+        <div class="pos-pnl ${pnl >= 0 ? 'profit' : 'loss'}">${pnl >= 0 ? '+' : ''}${pnl.toFixed(4)} SOL</div>
+      </div>
+      <div class="pos-row">Entry Price <span>$${pos.entryPrice.toFixed(8)}</span></div>
+      <div class="pos-row">Current Price <span>$${pos.token.price.toFixed(8)}</span></div>
+      <div class="pos-row">Holdings <span>${pos.tokens.toLocaleString()} ${pos.token.ticker}</span></div>
+      <div class="pos-row">P&L % <span style="color:${pnl>=0?'var(--green)':'var(--red)'}">${pnl>=0?'+':''}${pct}%</span></div>
+      <div class="pos-actions">
+        <div class="pos-btn sell-25" onclick="sellPosition(positions.find(p=>p.id==${pos.id}),25)">SELL 25%</div>
+        <div class="pos-btn sell-50" onclick="sellPosition(positions.find(p=>p.id==${pos.id}),50)">SELL 50%</div>
+        <div class="pos-btn sell-100" onclick="sellPosition(positions.find(p=>p.id==${pos.id}),100)">SELL ALL</div>
+      </div>
+    `;
+    wrap.appendChild(card);
+  });
+}
+
+function setBuyPct(pct) {
+  document.getElementById('buy-amount').value = (solBal * pct / 100).toFixed(3);
+}
+function setSellPct(pct) {
+  if (!selectedToken) return;
+  const pos = positions.find(p => p.token.id === selectedToken.id);
+  document.getElementById('sell-amount').value = pos ? Math.floor(pos.tokens * pct / 100) : 0;
+}
+
+// ─────────────────────────────────
+// TX LOG
+// ─────────────────────────────────
+function addTx(type, title, sub, amount, hash) {
+  const icons = { buy: '▲', sell: '▼', snipe: '🎯', fail: '✕' };
+  txEntries.unshift({ type, title, sub, amount, hash, time: nowTime() });
+  if (txEntries.length > 50) txEntries.pop();
+  renderTxLog();
+}
+
+function renderTxLog() {
+  const w = document.getElementById('tx-log-wrap');
+  w.innerHTML = txEntries.map(tx => `
+    <div class="tx-entry">
+      <div class="tx-icon ${tx.type}">${tx.type === 'snipe' ? '🎯' : tx.type === 'buy' ? '▲' : tx.type === 'fail' ? '✕' : '▼'}</div>
+      <div class="tx-content">
+        <div class="tx-title">${tx.title}</div>
+        <div class="tx-sub">${tx.sub} · <a onclick="openSolscan('${tx.hash}')">${fmtAddr(tx.hash)}</a></div>
+      </div>
+      <div class="tx-right">
+        <div class="tx-amount ${tx.amount < 0 ? 'buy' : 'sell'}">${tx.amount >= 0 ? '+' : ''}${tx.amount.toFixed(4)} SOL</div>
+        <div class="tx-time">${tx.time}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ─────────────────────────────────
+// TOPBAR UPDATE
+// ─────────────────────────────────
+function updateTopbar() {
+  document.getElementById('session-pnl').textContent = (sessionPnl >= 0 ? '+' : '') + sessionPnl.toFixed(4) + ' SOL';
+  document.getElementById('session-pnl').parentElement.className = 'top-pill ' + (sessionPnl >= 0 ? 'green' : 'red');
+  document.getElementById('snipe-count').textContent = snipeCount;
+  document.getElementById('sol-bal').textContent = solBal.toFixed(3);
+  document.getElementById('sol-usd').textContent  = '≈ $' + (solBal * 149.82).toFixed(2);
+  document.getElementById('buy-bal').textContent  = solBal.toFixed(3) + ' SOL';
+}
+
+// ─────────────────────────────────
+// MISC
+// ─────────────────────────────────
+function loadCA() {
+  const ca = document.getElementById('ca-input').value.trim();
+  if (!ca || ca.length < 32) { toast('warn','Invalid CA','Enter a valid Solana contract address.'); return; }
+  const mock = { id: Date.now(), icon: '🔍', name: 'Unknown Token', ticker: '???', addr: ca,
+    price: 0.000001, change: '0.0', mc: 100000, liq: 5, age: 'unknown', safe: true };
+  tokenFeed.unshift(mock);
+  selectToken(mock.id);
+  renderFeed();
+  toast('info','📋 CA Loaded', `${ca.slice(0,8)}... ready for trading`);
+}
+
+function addWatchlist(id) {
+  toast('info','★ Watchlisted','Token added to watchlist.');
+}
+function addToWatchlist(id) { addWatchlist(id); }
+function copyAddr() {
+  copyText('7xKXtg2CW...'); toast('info','📋 Copied','Wallet address copied!');
+}
+function copyText(t) {
+  if (navigator.clipboard) navigator.clipboard.writeText(t).catch(()=>{});
+}
+function openSettings() { toast('info','⚙ Settings','Settings panel coming soon.'); }
+function openSolscan(h) { window.open('https://solscan.io/tx/'+h,'_blank'); }
+function nowTime() { return new Date().toLocaleTimeString('de',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+function randomAddr() {
+  const chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  return Array.from({length:44},()=>chars[Math.floor(Math.random()*chars.length)]).join('');
+}
+function randomHash() { return randomAddr(); }
+function fmtAddr(h) { return h.slice(0,4)+'...'+h.slice(-4); }
+
+// ─────────────────────────────────
+// TOASTS
+// ─────────────────────────────────
+function toast(type, title, msg, dur=3000) {
+  const icons = { success:'✅', warn:'⚠️', error:'❌', info:'ℹ️' };
+  const stack = document.getElementById('toasts');
+  const el    = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.style.setProperty('--dur', (dur/1000)+'s');
+  el.innerHTML = `
+    <div class="toast-icon">${icons[type]||'ℹ️'}</div>
+    <div class="toast-content">
+      <div class="toast-title">${title}</div>
+      <div class="toast-msg">${msg}</div>
+    </div>
+  `;
+  stack.appendChild(el);
+  setTimeout(() => { el.style.opacity='0'; el.style.transform='translateX(12px)'; setTimeout(()=>el.remove(),300); }, dur);
+  while (stack.children.length > 4) stack.removeChild(stack.firstChild);
+}
+
+// ─────────────────────────────────
+// INIT
+// ─────────────────────────────────
+setTimeout(() => toast('success','🔗 Wallet Connected','7xKX...tg2C · 2.481 SOL loaded'), 600);
+setTimeout(() => toast('info','📡 Raydium Connected','WebSocket pool scanner ready'), 1400);
+
+// Passive age updater
+setInterval(() => {
+  tokenFeed.forEach((t,i) => {
+    const secs = Math.floor((Date.now()-t.id)/1000);
+    t.age = secs < 60 ? secs+'s' : Math.floor(secs/60)+'m';
+  });
+  renderFeed();
+}, 10000);
+</script>
+</body>
+</html>
